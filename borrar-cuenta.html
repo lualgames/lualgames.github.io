@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Descenso Real (Royal Descent) · Borrar la cuenta online</title>
+<!--
+  Página de borrado de cuenta (requisito de Google Play, 2026-11-11).
+  Llama a la función delete_account_by_code de Supabase (IA/Online/supabase_schema.sql) con la
+  clave PÚBLICA del proyecto (la misma que va dentro del juego). Nunca poner aquí la clave
+  secreta / service_role. Se publica tal cual en cualquier hosting estático (p. ej. GitHub Pages)
+  y su dirección va en la ficha de Play ("Seguridad de los datos" > borrar la cuenta).
+-->
+<style>
+	:root { --bg: #17131c; --panel: #241d2b; --line: #5a4030; --text: #f3e6c8; --muted: #a89a86; --gold: #f2c45a; --bad: #e0675a; --good: #8ad46e; }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+	main { max-width: 34rem; margin: 0 auto; padding: 2rem max(16px, env(safe-area-inset-left, 0px)) 3rem; }
+	h1 { color: var(--gold); font-size: 1.5rem; margin: 0 0 .25rem; }
+	h2 { font-size: 1.1rem; margin: 1.75rem 0 .5rem; }
+	p, li { color: var(--muted); }
+	strong { color: var(--text); }
+	.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1rem; }
+	label { display: block; font-size: .9rem; margin: .75rem 0 .25rem; color: var(--text); }
+	input { width: 100%; padding: .6rem; font: inherit; letter-spacing: .08em; text-transform: uppercase; background: #15121a; color: var(--text); border: 1px solid var(--line); border-radius: 4px; }
+	input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+	button { margin-top: 1rem; width: 100%; padding: .7rem; font: inherit; font-weight: 600; background: var(--bad); color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+	button:disabled { opacity: .6; cursor: default; }
+	button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+	.msg { margin-top: .75rem; min-height: 1.5em; }
+	.msg.ok { color: var(--good); }
+	.msg.err { color: var(--bad); }
+	.lang { text-align: right; font-size: .9rem; }
+	.lang a { color: var(--gold); }
+	[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+	<p class="lang"><a href="#" id="toggle">English</a></p>
+
+	<section data-lang="es">
+		<h1>Borrar la cuenta online</h1>
+		<p>Descenso Real (Royal Descent), de Lual Games.</p>
+		<h2>Desde el juego (lo más fácil)</h2>
+		<p>Abre <strong>Ajustes → Cuenta online → Borrar cuenta online</strong> y pulsa dos veces.</p>
+		<h2>Desde esta página</h2>
+		<p>Si ya no tienes el juego, necesitas un <strong>código de traspaso</strong> y su contraseña (en el juego: Ajustes → Cuenta online → Traspasar).</p>
+		<h2>Qué se borra</h2>
+		<ul>
+			<li>Tu cuenta online anónima y tu nombre de jugador.</li>
+			<li>Tu sitio en el clan (si eras el último miembro, el clan entero) y tus puntos de clan.</li>
+			<li>Tu ficha de la Arena online y la copia de tu partida en la nube.</li>
+		</ul>
+		<p>Se borra al momento y no se puede deshacer. La partida guardada en tu móvil no se toca.</p>
+	</section>
+
+	<section data-lang="en" hidden>
+		<h1>Delete your online account</h1>
+		<p>Royal Descent, by Lual Games.</p>
+		<h2>From the game (easiest)</h2>
+		<p>Open <strong>Settings → Online account → Delete online account</strong> and tap twice.</p>
+		<h2>From this page</h2>
+		<p>If you no longer have the game, you need a <strong>transfer code</strong> and its password (in the game: Settings → Online account → Transfer).</p>
+		<h2>What is deleted</h2>
+		<ul>
+			<li>Your anonymous online account and your player name.</li>
+			<li>Your clan spot (the whole clan if you were its last member) and your clan points.</li>
+			<li>Your online Arena record and the cloud copy of your save.</li>
+		</ul>
+		<p>It is deleted right away and cannot be undone. The save on your phone is not touched.</p>
+	</section>
+
+	<form class="card" id="form" novalidate>
+		<label for="code" data-es="Código de traspaso" data-en="Transfer code">Código de traspaso</label>
+		<input id="code" name="code" autocomplete="off" placeholder="XXXX-XXXX" maxlength="9" required>
+		<label for="password" data-es="Contraseña" data-en="Password">Contraseña</label>
+		<input id="password" name="password" autocomplete="off" placeholder="XXXXXX" maxlength="6" required>
+		<button type="submit" id="submit" data-es="Borrar mi cuenta" data-en="Delete my account">Borrar mi cuenta</button>
+		<p class="msg" id="msg" role="status"></p>
+	</form>
+</main>
+<script>
+	const SUPABASE_URL = "https://bfrgawwnqpctaiskezrk.supabase.co";
+	const PUBLIC_KEY = "sb_publishable_0VGuhFDgnrcNExmgTvM67Q_48ro23m0";
+	const T = {
+		es: { confirm: "Pulsa otra vez para borrarla para siempre.", working: "Borrando...", ok: "Cuenta borrada.",
+			bad: "El código o la contraseña no son correctos.", many: "Demasiados intentos con este código.",
+			empty: "Escribe el código y la contraseña.", net: "No se pudo conectar. Prueba más tarde.", toggle: "English" },
+		en: { confirm: "Tap again to delete it for good.", working: "Deleting...", ok: "Account deleted.",
+			bad: "The code or password is wrong.", many: "Too many tries with this code.",
+			empty: "Type the code and the password.", net: "Could not connect. Try again later.", toggle: "Español" },
+	};
+	let lang = (navigator.language || "es").toLowerCase().startsWith("es") ? "es" : "en";
+	let armed = false;
+	const $ = (id) => document.getElementById(id);
+	function applyLang() {
+		document.documentElement.lang = lang;
+		document.querySelectorAll("section[data-lang]").forEach((s) => { s.hidden = s.dataset.lang !== lang; });
+		document.querySelectorAll("[data-es]").forEach((el) => { el.textContent = el.dataset[lang]; });
+		$("toggle").textContent = T[lang].toggle;
+		$("msg").textContent = "";
+		armed = false;
+	}
+	function say(text, kind) { const m = $("msg"); m.textContent = text; m.className = "msg " + (kind || ""); }
+	$("toggle").addEventListener("click", (e) => { e.preventDefault(); lang = lang === "es" ? "en" : "es"; applyLang(); });
+	$("form").addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const code = $("code").value.trim().toUpperCase();
+		const password = $("password").value.trim().toUpperCase();
+		if (!code || !password) { say(T[lang].empty, "err"); return; }
+		if (!armed) { armed = true; say(T[lang].confirm, "err"); return; }
+		armed = false;
+		$("submit").disabled = true;
+		say(T[lang].working);
+		try {
+			const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/delete_account_by_code", {
+				method: "POST",
+				headers: { "apikey": PUBLIC_KEY, "Content-Type": "application/json" },
+				body: JSON.stringify({ p_code: code, p_password: password }),
+			});
+			const data = await r.json();
+			if (data && data.ok) { say(T[lang].ok, "ok"); $("form").reset(); }
+			else if (data && data.code === "too_many") { say(T[lang].many, "err"); }
+			else { say(T[lang].bad, "err"); }
+		} catch (err) {
+			say(T[lang].net, "err");
+		} finally {
+			$("submit").disabled = false;
+		}
+	});
+	applyLang();
+</script>
+</body>
+</html>
